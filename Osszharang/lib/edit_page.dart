@@ -18,7 +18,7 @@ class EditPage extends StatefulWidget {
     required DateTime idopont,
     required bool vibrate,
     required double volume,
-    String hang = 'assets/harang.mp3',
+    String hang = 'assets/harangozas2.mp3',
     String cim = 'Összetartozás Harangja',
     String szoveg = 'Emlékharangozás',
     int? kotelezoId,

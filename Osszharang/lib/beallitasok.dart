@@ -102,7 +102,7 @@ class _BeallitasokPageState extends State<BeallitasokPage> {
     final dummyAlarm = AlarmSettings(
       id: 999,
       dateTime: now,
-      assetAudioPath: 'assets/harang.mp3',
+      assetAudioPath: 'assets/harangozas2.mp3',
       loopAudio: false,
       vibrate: _vibration,
       volume: _volume,
