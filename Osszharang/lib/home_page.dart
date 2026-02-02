@@ -84,7 +84,7 @@ class _HomePageState extends State<HomePage> {
         children: [
           ColorFiltered(
             colorFilter: ColorFilter.mode(Colors.white54.withOpacity(0.3), BlendMode.modulate),
-            child: Image.asset('assets/harangborito.jpg', fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+            child: Image.asset('assets/hatter.jpg', fit: BoxFit.cover, width: double.infinity, height: double.infinity),
           ),
           Container(color: Colors.black.withOpacity(0.2)),
           SafeArea(

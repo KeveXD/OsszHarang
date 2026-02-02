@@ -13,36 +13,50 @@ class EditPage extends StatefulWidget {
   State<EditPage> createState() => _EditPageState();
 }
 
-DateTime valasztottDatum = DateTime.now();
-
 class _EditPageState extends State<EditPage> {
+  late DateTime valasztottDatum;
   late bool loopAudio;
   late bool vibrate;
   late double? volume;
   late String hang;
+
   int hour = 0;
   int minute = 0;
-  FixedExtentScrollController _minuteController = FixedExtentScrollController();
-  FixedExtentScrollController _hourController = FixedExtentScrollController();
+
+  late FixedExtentScrollController _minuteController;
+  late FixedExtentScrollController _hourController;
 
   @override
   void initState() {
     super.initState();
+
+    // Kezdő dátum beállítása (következő perc eleje)
     valasztottDatum = DateTime.now().add(const Duration(minutes: 1));
     valasztottDatum = valasztottDatum.copyWith(second: 0, millisecond: 0);
+
+    hour = valasztottDatum.hour;
+    minute = valasztottDatum.minute;
+
     loopAudio = false;
     vibrate = false;
     volume = null;
     hang = 'assets/harang.mp3';
 
-    _minuteController = FixedExtentScrollController(initialItem: valasztottDatum.minute);
-    _hourController = FixedExtentScrollController(initialItem: valasztottDatum.hour);
+    _minuteController = FixedExtentScrollController(initialItem: minute);
+    _hourController = FixedExtentScrollController(initialItem: hour);
+  }
+
+  @override
+  void dispose() {
+    _minuteController.dispose();
+    _hourController.dispose();
+    super.dispose();
   }
 
   String getDay() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final difference = valasztottDatum.difference(today).inDays;
+    final difference = DateTime(valasztottDatum.year, valasztottDatum.month, valasztottDatum.day).difference(today).inDays;
 
     switch (difference) {
       case 0:
@@ -55,9 +69,9 @@ class _EditPageState extends State<EditPage> {
   }
 
   AlarmSettings buildAlarmSettings() {
-    final id = DateTime.now().millisecondsSinceEpoch % 10000;
+    final id = widget.alarmSettings?.id ?? DateTime.now().millisecondsSinceEpoch % 10000;
 
-    final alarmSettings = AlarmSettings(
+    return AlarmSettings(
       id: id,
       dateTime: valasztottDatum,
       loopAudio: loopAudio,
@@ -67,141 +81,154 @@ class _EditPageState extends State<EditPage> {
       notificationTitle: 'Összetartozás Harangja',
       notificationBody: 'trianoni évforduló',
     );
-    return alarmSettings;
   }
 
   void saveAlarm() {
     Alarm.set(alarmSettings: buildAlarmSettings()).then((res) {
       if (res) {
-        // itt allitjuk hogy meddig szoljon
-        Future.delayed(const Duration(seconds: 5), () {
-          Alarm.stop(buildAlarmSettings().id).then((_) => Navigator.pop(context));
-        });
         Navigator.pop(context, true);
       }
     });
   }
 
+  void _updateTime() {
+    final now = DateTime.now();
+    DateTime tempDate = DateTime(
+      valasztottDatum.year,
+      valasztottDatum.month,
+      valasztottDatum.day,
+      hour,
+      minute,
+    );
+
+    // Ha a beállított idő már elmúlt a mai napon, tegye át holnapra
+    if (tempDate.isBefore(now)) {
+      tempDate = tempDate.add(const Duration(days: 1));
+    }
+
+    setState(() {
+      valasztottDatum = tempDate;
+    });
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: valasztottDatum,
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2030, 12, 31),
+    );
+
+    if (picked != null) {
+      setState(() {
+        valasztottDatum = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          hour,
+          minute,
+        );
+        _updateTime(); // Ellenőrizzük, hogy az idő érvényes-e így is
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
-        children: [
-          Flexible(
-            flex: 1,
-            child: Row(
-              children: [
-                Flexible(
-                  flex: 1,
-                  child: CupertinoPicker(
-                    squeeze: 0.8,
-                    diameterRatio: 5,
-                    useMagnifier: true,
-                    looping: true,
-                    itemExtent: 100,
-                    scrollController: _hourController,
-                    selectionOverlay: const CupertinoPickerDefaultSelectionOverlay(background: Colors.transparent, capEndEdge: true),
-                    onSelectedItemChanged: ((value) {
-                      setState(() {
-                        hour = value;
-                      });
-                      _time();
-                    }),
-                    children: [
-                      for (int i = 0; i < 24; i++) ...[Center(child: Text('$i', style: const TextStyle(fontSize: 50)))],
-                    ],
-                  ),
-                ),
-                const Text(":", style: TextStyle(fontSize: 50)),
-                Flexible(
-                  flex: 1,
-                  child: CupertinoPicker(
-                    squeeze: 0.8,
-                    diameterRatio: 5,
-                    looping: true,
-                    itemExtent: 100,
-                    scrollController: _minuteController,
-                    selectionOverlay: const CupertinoPickerDefaultSelectionOverlay(background: Colors.transparent, capEndEdge: true),
-                    onSelectedItemChanged: ((value) {
-                      setState(() {
-                        minute = value;
-                        _time();
-                      });
-                    }),
-                    children: [
-                      for (int i = 0; i <= 59; i++) ...[Center(child: Text(i.toString().padLeft(2, '0'), style: const TextStyle(fontSize: 50)))],
-                    ],
-                  ),
-                ),
-              ],
+      backgroundColor: Colors.blueGrey.shade900,
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 20),
+            // 1. IDŐVÁLASZTÓ
+            Flexible(
+              flex: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _buildPicker(_hourController, 24, (value) {
+                    hour = value;
+                    _updateTime();
+                  }),
+                  const Text(":", style: TextStyle(fontSize: 50, color: Colors.white)),
+                  _buildPicker(_minuteController, 60, (value) {
+                    minute = value;
+                    _updateTime();
+                  }, isMinute: true),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            flex: 1,
-            child: Card(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              child: SingleChildScrollView(
-                child: Column(
-                  children: [
-                    ListTile(
-                      title: Text(getDay()),
-                      trailing: IconButton(onPressed: () => _selectDate(context), icon: const Icon(Icons.calendar_month_outlined)),
+
+            // 2. MENTÉS ÉS MÉGSEM GOMBOK (Feljebb hozva)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 25.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade700,
+                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
                     ),
-                  ],
+                    child: const Text("Mégsem", style: TextStyle(color: Colors.white, fontSize: 16)),
+                  ),
+                  ElevatedButton(
+                    onPressed: saveAlarm,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.blueAccent,
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                    ),
+                    child: const Text("Mentés", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+
+            // 3. DÁTUMVÁLASZTÓ KÁRTYA
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              child: Card(
+                color: Colors.blueGrey.shade800,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                child: ListTile(
+                  leading: const Icon(Icons.calendar_today, color: Colors.blueAccent),
+                  title: Text(
+                    getDay(),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                  ),
+                  trailing: const Icon(Icons.edit, color: Colors.white54, size: 20),
+                  onTap: () => _selectDate(context),
                 ),
               ),
             ),
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(child: ElevatedButton(onPressed: () => Navigator.pop(context), child: Text("Mégsem", style: TextStyle(color: Colors.blue)))),
-              SizedBox(child: ElevatedButton(onPressed: saveAlarm, child: Text("Mentés", style: TextStyle(color: Colors.blue)))),
-            ],
-          ),
-        ],
+
+            const Spacer(),
+          ],
+        ),
       ),
     );
   }
 
-  //egy adott idopontot allit be String->DateTime
-  //valasztottDatum frissul
-  void _time() {
-    String timeString = "$hour:$minute";
-
-    DateTime dateTime = convertStringToDateTime(timeString);
-    //frissiti a widgetet egy callback fuggvennyel
-    setState(() {
-      valasztottDatum = dateTime;
-      if (valasztottDatum.isBefore(DateTime.now())) {
-        valasztottDatum = valasztottDatum.add(const Duration(days: 1));
-      }
-      getDay();
-    });
-  }
-
-  DateTime convertStringToDateTime(String timeString) {
-    DateFormat format = DateFormat('HH:mm');
-    DateTime dateTime = format.parse(timeString);
-
-    DateTime today = DateTime.now();
-    dateTime = DateTime(today.year, today.month, today.day, dateTime.hour, dateTime.minute);
-
-    return dateTime;
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    DateTime? now = await showDatePicker(context: context, firstDate: DateTime.now(), currentDate: valasztottDatum, lastDate: DateTime(2030, 12, 31));
-
-    if (now != null) {
-      setState(() {
-        valasztottDatum = now;
-        if (valasztottDatum.isBefore(DateTime.now())) {
-          valasztottDatum = valasztottDatum.add(const Duration(days: 1));
-        }
-        getDay();
-      });
-    }
+  Widget _buildPicker(FixedExtentScrollController controller, int count, ValueChanged<int> onChanged, {bool isMinute = false}) {
+    return Flexible(
+      child: CupertinoPicker(
+        squeeze: 0.9,
+        diameterRatio: 1.5,
+        useMagnifier: true,
+        looping: true,
+        itemExtent: 80,
+        scrollController: controller,
+        selectionOverlay: const CupertinoPickerDefaultSelectionOverlay(background: Colors.transparent),
+        onSelectedItemChanged: onChanged,
+        children: List.generate(count, (i) => Center(
+          child: Text(
+            isMinute ? i.toString().padLeft(2, '0') : i.toString(),
+            style: const TextStyle(fontSize: 45, color: Colors.white),
+          ),
+        )),
+      ),
+    );
   }
 }

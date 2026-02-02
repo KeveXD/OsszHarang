@@ -1,4 +1,4 @@
-package com.ballakeve.osszharang.osszharang_app
+package com.ballakeve.osszharang
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -58,6 +58,9 @@ flutter:
     - assets/harangborito.jpg
     - assets/harang.jpg
     - assets/harang.mp3
+    - assets/hatter.jpg
+    - assets/harangozas2.mp3
+
 
   uses-material-design: true
 
