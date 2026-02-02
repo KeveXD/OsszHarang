@@ -106,7 +106,7 @@ class _EditPageState extends State<EditPage> {
       idopont: testTime,
       vibrate: vibrate, // A mentett beállítás
       volume: volume,   // A mentett beállítás
-      hang: 'assets/harang.mp3', // Vagy 'harangozas2.mp3' attól függően mi a fájl neve
+      hang: 'assets/harangozas.mp3', // Vagy 'harangozas2.mp3' attól függően mi a fájl neve
       cim: 'Gyors Teszt',
       szoveg: 'Ez egy próba a beállított hangerővel.',
     );
