@@ -37,8 +37,8 @@ class _EditPageState extends State<EditPage> {
     minute = valasztottDatum.minute;
 
     loopAudio = false;
-    vibrate = true;
-    volume = 1.0;
+    vibrate = false;
+    volume = 0.1;
     hang = 'assets/harangozas2.mp3';
 
     _minuteController = FixedExtentScrollController(initialItem: minute);
@@ -64,6 +64,10 @@ class _EditPageState extends State<EditPage> {
       assetAudioPath: hang,
       notificationTitle: isTest ? 'Teszt harangozás' : 'Összetartozás Harangja',
       notificationBody: isTest ? 'A teszt sikeres!' : 'trianoni évforduló',
+
+      // --- EZEK KELLENEK A HÁTTÉRBŐL INDULÁSHOZ ---
+      androidFullScreenIntent: true,   // Ez nyitja meg az appot a háttérből
+      enableNotificationOnKill: true,  // Ez tartja életben a rendszert kilövés után
     );
   }
 
@@ -76,7 +80,7 @@ class _EditPageState extends State<EditPage> {
 
   // GYORS TESZT: Azonnali mentés +5 másodpercre
   void quickTest() {
-    final testTime = DateTime.now().add(const Duration(seconds: 5));
+    final testTime = DateTime.now().add(const Duration(seconds: 6));
     Alarm.set(alarmSettings: _createSettings(testTime, isTest: true)).then((res) {
       if (res) Navigator.pop(context, true);
     });
