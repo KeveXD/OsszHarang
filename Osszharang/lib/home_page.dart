@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:flutter/material.dart';
@@ -8,9 +9,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:url_launcher/url_launcher.dart' as launcher;
 
 // Saját fájlok importja
+import 'beallitasok.dart';
 import 'edit_page.dart';
 import 'trianoni_harang_szerkesztes.dart';
 import 'ido.dart';
+import 'theme.dart';   // <--- ÚJ: Dizájn rendszer
+import 'strings.dart'; // <--- ÚJ: Szövegek
 
 class HomePage extends StatefulWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -23,6 +27,8 @@ class _HomePageState extends State<HomePage> {
   late List<AlarmSettings> harangok;
   static StreamSubscription<AlarmSettings>? subscription;
   bool isDescriptionVisible = false;
+
+  // A 'accentColor' változót töröltük, mert most már az AppTheme.accentRed-et használjuk.
 
   @override
   void initState() {
@@ -39,16 +45,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void harangokBetoltese() {
-    List<AlarmSettings> currentAlarms = Alarm.getAlarms();
-
-    // Ha üres a lista, automatikusan hozzáadjuk a Trianoni harangot
-    if (currentAlarms.isEmpty) {
-      TrianoniHarangSzerkesztes.trianoniHarangHozzaadasa();
-      currentAlarms = Alarm.getAlarms();
-    }
-
     setState(() {
-      harangok = currentAlarms;
+      harangok = Alarm.getAlarms();
       harangok.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     });
   }
@@ -65,35 +63,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _showPermissionSettingsPopup() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: Colors.grey.shade900,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        title: const Text("Beállítások", style: TextStyle(color: Colors.white)),
-        content: const Text(
-          "A megbízható működéshez ellenőrizze a 'Megjelenítés más alkalmazások felett' engedélyt.",
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("MÉGSEM", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
-            onPressed: () async {
-              Navigator.pop(context);
-              await openAppSettings();
-            },
-            child: const Text("BEÁLLÍTÁS", style: TextStyle(color: Colors.black)),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Future<void> navigateToRingScreen(AlarmSettings alarmSettings) async {
     await Navigator.push(
@@ -125,16 +95,23 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundBase, // Téma szín (Sötétzöld)
       body: Stack(
         children: [
-          // HÁTTÉR
+          // --- HÁTTÉR ---
           Positioned.fill(
-            child: ColorFiltered(
-              colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.6),
-                BlendMode.darken,
+            child: Image.asset(
+              'assets/hatter.jpg',
+              fit: BoxFit.cover,
+            ),
+          ),
+          Positioned.fill(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 4.0, sigmaY: 4.0),
+              child: Container(
+                // Téma szín (Halvány zöld fólia)
+                color: AppTheme.backgroundOverlay.withOpacity(0.4),
               ),
-              child: Image.asset('assets/hatter.jpg', fit: BoxFit.cover),
             ),
           ),
 
@@ -147,26 +124,24 @@ class _HomePageState extends State<HomePage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Weboldal link (Kicsi, elegáns)
+                      // Link Gomb
                       InkWell(
                         onTap: _launchUrl,
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.white24),
-                            borderRadius: BorderRadius.circular(20),
-                            color: Colors.black38,
-                          ),
-                          child: const Row(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          // Használjuk a közös üveg dekorációt a témából
+                          decoration: AppTheme.glassDecoration(opacity: 0.4),
+                          child: Row(
                             children: [
-                              Icon(Icons.public, color: Colors.orangeAccent, size: 16),
-                              SizedBox(width: 8),
-                              Text(
+                              Icon(Icons.public, color: AppTheme.accentRed, size: 16),
+                              const SizedBox(width: 8),
+                              const Text(
                                 "osszharang.com",
                                 style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
+                                    color: AppTheme.textPrimary,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500
                                 ),
                               ),
                             ],
@@ -174,16 +149,23 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
 
+                      // Jobb oldali ikonok
                       Row(
                         children: [
                           IconButton(
-                            onPressed: _showPermissionSettingsPopup,
-                            icon: const Icon(Icons.settings, color: Colors.white70),
-                            tooltip: "Engedélyek",
+                            onPressed: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const BeallitasokPage()),
+                              );
+                              harangokBetoltese();
+                            },
+                            icon: const Icon(Icons.settings, color: AppTheme.textPrimary),
+                            tooltip: "Beállítások",
                           ),
                           IconButton(
                             onPressed: navigateToEditPage,
-                            icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
+                            icon: const Icon(Icons.add_circle_outline, color: AppTheme.textPrimary, size: 30),
                             tooltip: "Új harangozás",
                           ),
                         ],
@@ -194,24 +176,16 @@ class _HomePageState extends State<HomePage> {
 
                 const SizedBox(height: 10),
 
-                // DIZÁJNOS ÓRA KERET (Realtime widget becsomagolva)
+                // --- ÓRA (GLOWING RED) ---
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
-                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
-                  decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05), // Nagyon halvány háttér
-                      borderRadius: BorderRadius.circular(25),
-                      border: Border.all(color: Colors.white10, width: 1), // Vékony keret
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        )
-                      ]
-                  ),
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), // Kicsit szélesebb margó
+                  padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 15), // Nagyobb belső tér
+
+                  // Itt hívjuk meg az új, sötétvörös stílust a theme.dart-ból
+                  decoration: AppTheme.glowingRedDecoration(),
+
                   child: Center(
-                    // Itt hívjuk meg a te Realtime widgetedet
+                    // Ez pedig az új, vagány óra widget az ido.dart-ból
                     child: Realtime(),
                   ),
                 ),
@@ -223,11 +197,11 @@ class _HomePageState extends State<HomePage> {
                     onPressed: () => setState(() => isDescriptionVisible = !isDescriptionVisible),
                     icon: Icon(
                       isDescriptionVisible ? Icons.expand_less : Icons.expand_more,
-                      color: Colors.white60,
+                      color: AppTheme.textPrimary,
                     ),
                     label: Text(
                       isDescriptionVisible ? "Leírás elrejtése" : "Miért szól a harang?",
-                      style: const TextStyle(color: Colors.white60),
+                      style: const TextStyle(color: AppTheme.textPrimary, letterSpacing: 1),
                     ),
                   ),
                 ),
@@ -246,7 +220,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // LISTA NÉZET
+  // --- UI ÉPÍTŐ ELEMEK ---
   Widget _buildAlarmList() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -255,48 +229,20 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ÜRES ÁLLAPOT (A kért új gombbal)
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.notifications_off_outlined, size: 50, color: Colors.white24),
+          Icon(Icons.notifications_off_outlined, size: 60, color: AppTheme.textPrimary.withOpacity(0.5)),
           const SizedBox(height: 20),
-
-          // ÚJ DIZÁJNÚ GOMB
-          Container(
-            decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.withOpacity(0.4),
-                    blurRadius: 20,
-                    spreadRadius: 2,
-                  )
-                ]
-            ),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                TrianoniHarangSzerkesztes.trianoniHarangHozzaadasa();
-                harangokBetoltese();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF8B0000), // Sötétvörös (vér/hazafias)
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                side: const BorderSide(color: Colors.redAccent, width: 1),
-              ),
-              icon: const Icon(Icons.refresh, size: 28),
-              label: const Text(
-                "Trianoni harang (16:32)\nbekapcsolása",
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.5,
-                ),
-              ),
+          const Text(
+            "Nincs beállított harangozás",
+            style: TextStyle(
+                color: AppTheme.textPrimary,
+                fontSize: 18,
+                fontWeight: FontWeight.w400,
+                shadows: [Shadow(blurRadius: 5, color: Colors.black)]
             ),
           ),
         ],
@@ -304,47 +250,24 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // LEÍRÁS NÉZET
   Widget _buildDescription() {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.7),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white12),
-      ),
+      padding: const EdgeInsets.all(25),
+      // Üveg dekoráció, kicsit sötétebb (0.7), hogy a szöveg olvasható legyen
+      decoration: AppTheme.glassDecoration(opacity: 0.7),
       child: Scrollbar(
         thumbVisibility: true,
         child: SingleChildScrollView(
           child: Column(
             children: [
-              const Icon(Icons.history_edu, color: Colors.orangeAccent, size: 30),
-              const SizedBox(height: 15),
+              Icon(Icons.history_edu, color: AppTheme.accentRed, size: 36),
+              const SizedBox(height: 20),
+              // Itt használjuk a Strings fájlt!
               Text(
-                """Vegyük kezünkbe a trianoni emlékharangozást! 
-
-1920. június 4-én 16:32 perckor aláírták a trianoni békediktátumot a versailles-i Nagy-Trianon kastély 52 méter hosszú és 7 méter széles folyosóján, a La galérie des Cotelle-ben. Ezen a napon Magyarország elveszítette területének kétharmadát, a magyar népesség egyharmada pedig a határokon kívülre került. 
-
-Ennek emlékére évekig országszerte megszólaltak a templomharangok ebben az időben. Ez a hagyomány azonban 1945 után teljesen megszűnt. 
-
-2012-ben a három, nagy keresztény egyház visszautasította azt a kormányzati kérést, hogy június 4-én, a Nemzeti Összetartozás Napján délután, a trianoni szerződés aláírásának időpontjában konduljanak meg a templomok harangjai, s szóljanak egy percig a megemlékezés részeként. Ezért gondoltuk úgy, hogy saját kezünkbe kell venni ennek a harangozásnak a feladatát. 
-
-Ez az applikáció nem tesz mást, mint minden évben figyelmezteti használóját az emlékezés szükségességére azzal, hogy június 4-én, 16:32-kor automatikusan megszólaltatja ezt az emlékharangot annyi másodpercre, amennyi az adott trianoni évforduló. Szintén megszólítja tulajdonosát, figyelmeztetve az esemény fontosságára. 
-
-Miután a trianoni emléknapját és a Nemzeti Összetartozás Napját együtt kell reprezentálnia, ezért ez az applikáció az ÖSSZHARANG nevet kapta. Egyszerre szól az emlékezés és a jövőbe vetett hitünk, összetartozásunk hangján. 
-
-Bárhol is érjen ezen harangozás pillanata, állj meg egy percre és tartsd magasba a telefonod. Lesznek, akik majd megkérdezik, mire vélhetik ezt a jelenetet. Akkor lehet-kell elmondani, hogy 1920-ban, ebben a pillanatban veszített el Magyarország területének háromnegyedét. Kifejthetjük a szükséges részletességig nemzeti tragédiánk hátterét. Ugyanakkor a harang azokért is szól, akik kint rekedtek a magyar határokon túl és idegen hatalmak, országok polgáraiként élik azóta is életüket. 
-
-Nem felejtjük el, hogy mindezek ellenére mi összetartozunk. Magyarország, a magyar nemzet egy és oszthatatlan. 
-
-Ezt az applikációt ki lehet kapcsolni, ha valaki előre látja, hogy a harangozás idején, zavarná az aktuális programjában. A telefon egy héttel, és később egy nappal a harangozást megelőzően még rákérdez a kikapcsolás szükségességére. 
-
-Kérlek add tovább ennek az applikációnak hírét, hogy minél több honfitárunkkal együtt emlékezhessünk és emlékeztethessünk! 
-
-Szilágyi Ákos – 56 Lángja Alapítvány""",
+                AppStrings.trianonDescription,
                 textAlign: TextAlign.justify,
-                style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
+                style: const TextStyle(color: AppTheme.textPrimary, fontSize: 16, height: 1.6),
               ),
             ],
           ),
@@ -353,19 +276,14 @@ Szilágyi Ákos – 56 Lángja Alapítvány""",
     );
   }
 
-  // HARANG KÁRTYA NÉZET
   Widget _buildHarangKartya(AlarmSettings alarm) {
     String time = DateFormat('HH:mm').format(alarm.dateTime);
     String date = DateFormat('EEEE, dd MMM', 'hu_HU').format(alarm.dateTime);
 
-    return Card(
-      elevation: 6,
-      color: Colors.black45, // Áttetsző sötét
+    // Kártya helyett Container-t használunk, hogy rátehessük a saját üveg-dekorációnkat
+    return Container(
       margin: const EdgeInsets.only(bottom: 15),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: Colors.white10, width: 1),
-      ),
+      decoration: AppTheme.glassDecoration(opacity: 0.5),
       child: Stack(
         children: [
           Padding(
@@ -376,16 +294,17 @@ Szilágyi Ákos – 56 Lángja Alapítvány""",
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(time, style: const TextStyle(fontSize: 45, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.5)),
-                      Text(date, style: const TextStyle(color: Colors.orangeAccent, fontSize: 16, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 10),
+                      Text(time, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: 2)),
+                      Text(date, style: const TextStyle(color: AppTheme.accentRed, fontSize: 16, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                            color: Colors.white10,
-                            borderRadius: BorderRadius.circular(8)
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.white24)
                         ),
-                        child: const Text("EMLÉKHARANGOZÁS", style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.5)),
+                        child: const Text("EMLÉKHARANGOZÁS", style: TextStyle(color: AppTheme.textPrimary, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),
@@ -393,31 +312,34 @@ Szilágyi Ákos – 56 Lángja Alapítvány""",
                 Container(
                   decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 10, spreadRadius: 1)]
+                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15, spreadRadius: 2)]
                   ),
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(15),
-                    child: Image.asset('assets/harang.jpg', width: 80, height: 80, fit: BoxFit.cover),
+                    child: Image.asset('assets/harang.jpg', width: 85, height: 85, fit: BoxFit.cover),
                   ),
                 ),
               ],
             ),
           ),
-          // X TÖRLÉS GOMB
           Positioned(
-            right: 5,
-            top: 5,
+            right: 0,
+            top: 0,
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), topRight: Radius.circular(20)),
                 onTap: () async {
                   await Alarm.stop(alarm.id);
                   harangokBetoltese();
                 },
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(Icons.close, color: Colors.white38, size: 24),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.1),
+                      borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), topRight: Radius.circular(20))
+                  ),
+                  child: const Icon(Icons.close, color: AppTheme.textPrimary, size: 20),
                 ),
               ),
             ),

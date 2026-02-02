@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.VIBRATE"/>
 
     <application
         android:label="ÖsszHarang"
@@ -34,18 +35,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <service
-            android:name="com.gdelataillade.alarm.services.AlarmService"
-            android:foregroundServiceType="mediaPlayback"
-            android:exported="false" />
-
-        <receiver android:name="com.gdelataillade.alarm.services.AlarmReceiver" android:exported="false" />
-        <receiver android:name="com.gdelataillade.alarm.services.RebootReceiver" android:exported="false">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
 
         <meta-data
             android:name="flutterEmbedding"
