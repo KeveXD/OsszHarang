@@ -2,12 +2,12 @@ import 'dart:async';
 import 'package:alarm/alarm.dart';
 import 'package:alarm/model/alarm_settings.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
-import 'package:flutter_sound/public/flutter_sound_player.dart';
 import 'package:intl/intl.dart';
 import 'package:osszharang_app/harangozas_page.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:url_launcher/url_launcher.dart' as launcher;
 
+// Saját fájlok importja
 import 'edit_page.dart';
 import 'trianoni_harang_szerkesztes.dart';
 import 'ido.dart';
@@ -22,8 +22,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late List<AlarmSettings> harangok;
   static StreamSubscription<AlarmSettings>? subscription;
-  final FlutterSoundPlayer _audioPlayer = FlutterSoundPlayer();
-
   bool isDescriptionVisible = false;
 
   @override
@@ -34,46 +32,93 @@ class _HomePageState extends State<HomePage> {
     }
 
     harangokBetoltese();
-    //figyeli a streamet es ha uj adat erkezik a stream-re akkor meghivja a fuggvenyt
-    subscription ??= Alarm.ringStream.stream.listen((alarmSettings) => navigateToRingScreen(alarmSettings));
-  }
 
-  // Hang leállítása
-  void _stopAudio() async {
-    await _audioPlayer.stopPlayer();
-  }
-
-  void harangokBetoltese() {
-    setState(() {
-      harangok = Alarm.getAlarms();
-      //teszthez kell
-      harangok.sort((a, b) => a.dateTime.isBefore(b.dateTime) ? 0 : 1);
+    subscription ??= Alarm.ringStream.stream.listen((alarmSettings) {
+      navigateToRingScreen(alarmSettings);
     });
   }
 
+  void harangokBetoltese() {
+    List<AlarmSettings> currentAlarms = Alarm.getAlarms();
+
+    // Ha üres a lista, automatikusan hozzáadjuk a Trianoni harangot
+    if (currentAlarms.isEmpty) {
+      TrianoniHarangSzerkesztes.trianoniHarangHozzaadasa();
+      currentAlarms = Alarm.getAlarms();
+    }
+
+    setState(() {
+      harangok = currentAlarms;
+      harangok.sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    });
+  }
+
+  Future<void> _launchUrl() async {
+    final Uri url = Uri.parse('https://osszharang.com');
+    try {
+      await launcher.launchUrl(
+        url,
+        mode: launcher.LaunchMode.externalApplication,
+      );
+    } catch (e) {
+      debugPrint('Hiba a weboldal megnyitásakor: $e');
+    }
+  }
+
+  void _showPermissionSettingsPopup() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey.shade900,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text("Beállítások", style: TextStyle(color: Colors.white)),
+        content: const Text(
+          "A megbízható működéshez ellenőrizze a 'Megjelenítés más alkalmazások felett' engedélyt.",
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("MÉGSEM", style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orangeAccent),
+            onPressed: () async {
+              Navigator.pop(context);
+              await openAppSettings();
+            },
+            child: const Text("BEÁLLÍTÁS", style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> navigateToRingScreen(AlarmSettings alarmSettings) async {
-    await Navigator.push(context, MaterialPageRoute(builder: (context) => HarangozasPage(alarmSettings: alarmSettings)));
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => HarangozasPage(alarmSettings: alarmSettings)),
+    );
     harangokBetoltese();
   }
 
   Future<void> navigateToEditPage() async {
-    await Navigator.push(context, MaterialPageRoute(builder: (context) => EditPage()));
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const EditPage()),
+    );
     harangokBetoltese();
   }
 
   Future<void> checkAndroidNotificationPermission() async {
     final status = await Permission.notification.status;
-    if (status.isDenied) {
-      alarmPrint('Requesting notification permission...');
-      final res = await Permission.notification.request();
-      alarmPrint('Notification permission ${res.isGranted ? '' : 'not'} granted.');
-    }
+    if (status.isDenied) await Permission.notification.request();
   }
 
   @override
   void dispose() {
     subscription?.cancel();
-
     super.dispose();
   }
 
@@ -82,66 +127,202 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       body: Stack(
         children: [
-          ColorFiltered(
-            colorFilter: ColorFilter.mode(Colors.white54.withOpacity(0.3), BlendMode.modulate),
-            child: Image.asset('assets/hatter.jpg', fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+          // HÁTTÉR
+          Positioned.fill(
+            child: ColorFiltered(
+              colorFilter: ColorFilter.mode(
+                Colors.black.withOpacity(0.6),
+                BlendMode.darken,
+              ),
+              child: Image.asset('assets/hatter.jpg', fit: BoxFit.cover),
+            ),
           ),
-          Container(color: Colors.black.withOpacity(0.2)),
+
           SafeArea(
             child: Column(
               children: [
-                const SizedBox(height: 100),
-                Center(child: Realtime()),
-                const SizedBox(height: 60),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [IconButton(onPressed: () => navigateToEditPage(), icon: const Icon(Icons.add))],
-                ),
-                harangok.isNotEmpty
-                    ? Expanded(
-                      child: ListView.builder(
-                        itemCount: harangok.length,
-                        itemBuilder: (context, index) {
-                          return _buildHarangKartya(harangok[index], index);
-                        },
+                // FELSŐ SÁV (Link + Ikonok)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Weboldal link (Kicsi, elegáns)
+                      InkWell(
+                        onTap: _launchUrl,
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.white24),
+                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.black38,
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.public, color: Colors.orangeAccent, size: 16),
+                              SizedBox(width: 8),
+                              Text(
+                                "osszharang.com",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    )
-                    : Expanded(
-                      child: Column(
+
+                      Row(
                         children: [
-                          Text("Összetartozás harangja", style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 10),
-                          ElevatedButton(
-                            onPressed: () {
-                              TrianoniHarangSzerkesztes.trianoniHarangHozzaadasa();
-                              harangokBetoltese();
-                            },
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-                            child: const Text("ÖsszHarang", style: TextStyle(color: Colors.white)),
+                          IconButton(
+                            onPressed: _showPermissionSettingsPopup,
+                            icon: const Icon(Icons.settings, color: Colors.white70),
+                            tooltip: "Engedélyek",
                           ),
-                          const SizedBox(height: 10),
-                          GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                isDescriptionVisible = !isDescriptionVisible; // Toggle description visibility
-                              });
-                            },
-                            child: Text("Leírás", style: TextStyle(color: Colors.blue, decoration: TextDecoration.underline, fontSize: 16)),
+                          IconButton(
+                            onPressed: navigateToEditPage,
+                            icon: const Icon(Icons.add_circle_outline, color: Colors.white, size: 28),
+                            tooltip: "Új harangozás",
                           ),
-                          const SizedBox(height: 10),
-                          // Only show description text if 'isDescriptionVisible' is true
-                          Visibility(
-                            visible: isDescriptionVisible,
-                            child: Expanded(
-                              child: Container(
-                                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(color: Colors.white.withOpacity(0.6), borderRadius: BorderRadius.circular(12)),
-                                child: Scrollbar(
-                                  thumbVisibility: true,
-                                  child: SingleChildScrollView(
-                                    child: Text(
-                                      """Vegyük kezünkbe a trianoni emlékharangozást! 
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // DIZÁJNOS ÓRA KERET (Realtime widget becsomagolva)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 10),
+                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 10),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05), // Nagyon halvány háttér
+                      borderRadius: BorderRadius.circular(25),
+                      border: Border.all(color: Colors.white10, width: 1), // Vékony keret
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          spreadRadius: 1,
+                        )
+                      ]
+                  ),
+                  child: Center(
+                    // Itt hívjuk meg a te Realtime widgetedet
+                    child: Realtime(),
+                  ),
+                ),
+
+                // Leírás gomb
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: TextButton.icon(
+                    onPressed: () => setState(() => isDescriptionVisible = !isDescriptionVisible),
+                    icon: Icon(
+                      isDescriptionVisible ? Icons.expand_less : Icons.expand_more,
+                      color: Colors.white60,
+                    ),
+                    label: Text(
+                      isDescriptionVisible ? "Leírás elrejtése" : "Miért szól a harang?",
+                      style: const TextStyle(color: Colors.white60),
+                    ),
+                  ),
+                ),
+
+                // TARTALOM
+                Expanded(
+                  child: isDescriptionVisible
+                      ? _buildDescription()
+                      : (harangok.isEmpty ? _buildEmptyState() : _buildAlarmList()),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // LISTA NÉZET
+  Widget _buildAlarmList() {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      itemCount: harangok.length,
+      itemBuilder: (context, index) => _buildHarangKartya(harangok[index]),
+    );
+  }
+
+  // ÜRES ÁLLAPOT (A kért új gombbal)
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.notifications_off_outlined, size: 50, color: Colors.white24),
+          const SizedBox(height: 20),
+
+          // ÚJ DIZÁJNÚ GOMB
+          Container(
+            decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.withOpacity(0.4),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  )
+                ]
+            ),
+            child: ElevatedButton.icon(
+              onPressed: () {
+                TrianoniHarangSzerkesztes.trianoniHarangHozzaadasa();
+                harangokBetoltese();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B0000), // Sötétvörös (vér/hazafias)
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 20),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                side: const BorderSide(color: Colors.redAccent, width: 1),
+              ),
+              icon: const Icon(Icons.refresh, size: 28),
+              label: const Text(
+                "Trianoni harang (16:32)\nbekapcsolása",
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // LEÍRÁS NÉZET
+  Widget _buildDescription() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.7),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white12),
+      ),
+      child: Scrollbar(
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              const Icon(Icons.history_edu, color: Colors.orangeAccent, size: 30),
+              const SizedBox(height: 15),
+              Text(
+                """Vegyük kezünkbe a trianoni emlékharangozást! 
 
 1920. június 4-én 16:32 perckor aláírták a trianoni békediktátumot a versailles-i Nagy-Trianon kastély 52 méter hosszú és 7 méter széles folyosóján, a La galérie des Cotelle-ben. Ezen a napon Magyarország elveszítette területének kétharmadát, a magyar népesség egyharmada pedig a határokon kívülre került. 
 
@@ -162,95 +343,86 @@ Ezt az applikációt ki lehet kapcsolni, ha valaki előre látja, hogy a harango
 Kérlek add tovább ennek az applikációnak hírét, hogy minél több honfitárunkkal együtt emlékezhessünk és emlékeztethessünk! 
 
 Szilágyi Ákos – 56 Lángja Alapítvány""",
-                                      textAlign: TextAlign.justify,
-                                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.black, fontSize: 16),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-              ],
-            ),
+                textAlign: TextAlign.justify,
+                style: const TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildHarangKartya(AlarmSettings alarm, int index) {
-    TimeOfDay time = TimeOfDay.fromDateTime(alarm.dateTime);
-    String formattedDate = DateFormat('EEEE, dd MMM', 'hu_HU').format(alarm.dateTime);
-    DateTime now = DateTime.now();
-    Duration difference = alarm.dateTime.difference(now);
+  // HARANG KÁRTYA NÉZET
+  Widget _buildHarangKartya(AlarmSettings alarm) {
+    String time = DateFormat('HH:mm').format(alarm.dateTime);
+    String date = DateFormat('EEEE, dd MMM', 'hu_HU').format(alarm.dateTime);
 
-    int days = difference.inDays;
-    int hours = difference.inHours % 24;
-    int minutes = difference.inMinutes % 60;
-
-    return GestureDetector(
-      child: Slidable(
-        closeOnScroll: true,
-        endActionPane: ActionPane(
-          extentRatio: 0.4,
-          motion: const ScrollMotion(),
-          children: [
-            SlidableAction(
-              borderRadius: BorderRadius.circular(12),
-              onPressed: (context) {
-                Alarm.stop(alarm.id);
-                harangokBetoltese();
-              },
-              icon: Icons.delete_forever,
-              backgroundColor: Colors.red.shade700,
-            ),
-          ],
-        ),
-        child: Card(
-          color: Colors.grey.shade800,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
+    return Card(
+      elevation: 6,
+      color: Colors.black45, // Áttetsző sötét
+      margin: const EdgeInsets.only(bottom: 15),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Colors.white10, width: 1),
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20.0),
             child: Row(
               children: [
                 Expanded(
-                  flex: 2,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}",
-                        style: TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white),
+                      Text(time, style: const TextStyle(fontSize: 45, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 1.5)),
+                      Text(date, style: const TextStyle(color: Colors.orangeAccent, fontSize: 16, fontWeight: FontWeight.w500)),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                            color: Colors.white10,
+                            borderRadius: BorderRadius.circular(8)
+                        ),
+                        child: const Text("EMLÉKHARANGOZÁS", style: TextStyle(color: Colors.white70, fontSize: 11, letterSpacing: 1.5)),
                       ),
-                      SizedBox(height: 8),
-                      Text(formattedDate, style: TextStyle(fontSize: 16, color: Colors.grey.shade400)),
-                      SizedBox(height: 16),
-                      Text("Harangozás", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white)),
-                      SizedBox(height: 8),
-                      Text("${days} nap ${hours} óra ${minutes} perc múlva", style: TextStyle(fontSize: 16, color: Colors.grey.shade400)),
                     ],
                   ),
                 ),
-                SizedBox(width: 16),
-                Expanded(
-                  flex: 1,
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        image: DecorationImage(image: AssetImage('assets/harang.jpg'), fit: BoxFit.cover),
-                      ),
-                    ),
+                Container(
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [BoxShadow(color: Colors.black38, blurRadius: 10, spreadRadius: 1)]
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Image.asset('assets/harang.jpg', width: 80, height: 80, fit: BoxFit.cover),
                   ),
                 ),
               ],
             ),
           ),
-        ),
+          // X TÖRLÉS GOMB
+          Positioned(
+            right: 5,
+            top: 5,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: () async {
+                  await Alarm.stop(alarm.id);
+                  harangokBetoltese();
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Icon(Icons.close, color: Colors.white38, size: 24),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
