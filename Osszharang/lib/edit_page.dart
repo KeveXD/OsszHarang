@@ -30,7 +30,6 @@ class _EditPageState extends State<EditPage> {
   void initState() {
     super.initState();
 
-    // Kezdő dátum beállítása (következő perc eleje)
     valasztottDatum = DateTime.now().add(const Duration(minutes: 1));
     valasztottDatum = valasztottDatum.copyWith(second: 0, millisecond: 0);
 
@@ -38,9 +37,9 @@ class _EditPageState extends State<EditPage> {
     minute = valasztottDatum.minute;
 
     loopAudio = false;
-    vibrate = false;
-    volume = null;
-    hang = 'assets/harang.mp3';
+    vibrate = true;
+    volume = 1.0;
+    hang = 'assets/harangozas2.mp3';
 
     _minuteController = FixedExtentScrollController(initialItem: minute);
     _hourController = FixedExtentScrollController(initialItem: hour);
@@ -53,84 +52,41 @@ class _EditPageState extends State<EditPage> {
     super.dispose();
   }
 
-  String getDay() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final difference = DateTime(valasztottDatum.year, valasztottDatum.month, valasztottDatum.day).difference(today).inDays;
-
-    switch (difference) {
-      case 0:
-        return 'Ma - ${DateFormat('EEEE, MMMM d', 'hu_HU').format(valasztottDatum)}';
-      case 1:
-        return 'Holnap - ${DateFormat('EEEE, MMMM d', 'hu_HU').format(valasztottDatum)}';
-      default:
-        return DateFormat('EEEE, MMMM d', 'hu_HU').format(valasztottDatum);
-    }
-  }
-
-  AlarmSettings buildAlarmSettings() {
+  // Segédfüggvény az AlarmSettings összeállításához
+  AlarmSettings _createSettings(DateTime scheduledTime, {bool isTest = false}) {
     final id = widget.alarmSettings?.id ?? DateTime.now().millisecondsSinceEpoch % 10000;
-
     return AlarmSettings(
       id: id,
-      dateTime: valasztottDatum,
+      dateTime: scheduledTime,
       loopAudio: loopAudio,
       vibrate: vibrate,
       volume: volume,
       assetAudioPath: hang,
-      notificationTitle: 'Összetartozás Harangja',
-      notificationBody: 'trianoni évforduló',
+      notificationTitle: isTest ? 'Teszt harangozás' : 'Összetartozás Harangja',
+      notificationBody: isTest ? 'A teszt sikeres!' : 'trianoni évforduló',
     );
   }
 
+  // Normál mentés (a picker értékei alapján)
   void saveAlarm() {
-    Alarm.set(alarmSettings: buildAlarmSettings()).then((res) {
-      if (res) {
-        Navigator.pop(context, true);
-      }
+    Alarm.set(alarmSettings: _createSettings(valasztottDatum)).then((res) {
+      if (res) Navigator.pop(context, true);
+    });
+  }
+
+  // GYORS TESZT: Azonnali mentés +5 másodpercre
+  void quickTest() {
+    final testTime = DateTime.now().add(const Duration(seconds: 5));
+    Alarm.set(alarmSettings: _createSettings(testTime, isTest: true)).then((res) {
+      if (res) Navigator.pop(context, true);
     });
   }
 
   void _updateTime() {
     final now = DateTime.now();
-    DateTime tempDate = DateTime(
-      valasztottDatum.year,
-      valasztottDatum.month,
-      valasztottDatum.day,
-      hour,
-      minute,
-    );
-
-    // Ha a beállított idő már elmúlt a mai napon, tegye át holnapra
-    if (tempDate.isBefore(now)) {
-      tempDate = tempDate.add(const Duration(days: 1));
-    }
-
-    setState(() {
-      valasztottDatum = tempDate;
-    });
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: valasztottDatum,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2030, 12, 31),
-    );
-
-    if (picked != null) {
-      setState(() {
-        valasztottDatum = DateTime(
-          picked.year,
-          picked.month,
-          picked.day,
-          hour,
-          minute,
-        );
-        _updateTime(); // Ellenőrizzük, hogy az idő érvényes-e így is
-      });
-    }
+    DateTime tempDate = DateTime(valasztottDatum.year, valasztottDatum.month, valasztottDatum.day, hour, minute);
+    if (tempDate.isBefore(now)) tempDate = tempDate.add(const Duration(days: 1));
+    setState(() => valasztottDatum = tempDate);
   }
 
   @override
@@ -141,6 +97,7 @@ class _EditPageState extends State<EditPage> {
         child: Column(
           children: [
             const SizedBox(height: 20),
+
             // 1. IDŐVÁLASZTÓ
             Flexible(
               flex: 3,
@@ -160,19 +117,30 @@ class _EditPageState extends State<EditPage> {
               ),
             ),
 
-            // 2. MENTÉS ÉS MÉGSEM GOMBOK (Feljebb hozva)
+            // 2. GYORS TESZT GOMB (Kiemelve)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 25.0),
+              padding: const EdgeInsets.symmetric(vertical: 10.0),
+              child: OutlinedButton.icon(
+                onPressed: quickTest,
+                icon: const Icon(Icons.flash_on, color: Colors.orangeAccent),
+                label: const Text("GYORS TESZT (+5 mp)", style: TextStyle(color: Colors.orangeAccent)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.orangeAccent),
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                ),
+              ),
+            ),
+
+            // 3. MENTÉS ÉS MÉGSEM GOMBOK
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 15.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton(
+                  TextButton(
                     onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.grey.shade700,
-                      padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                    ),
-                    child: const Text("Mégsem", style: TextStyle(color: Colors.white, fontSize: 16)),
+                    child: const Text("Mégsem", style: TextStyle(color: Colors.white70, fontSize: 16)),
                   ),
                   ElevatedButton(
                     onPressed: saveAlarm,
@@ -180,30 +148,26 @@ class _EditPageState extends State<EditPage> {
                       backgroundColor: Colors.blueAccent,
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
                     ),
-                    child: const Text("Mentés", style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    child: const Text("MENTÉS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
             ),
 
-            // 3. DÁTUMVÁLASZTÓ KÁRTYA
+            // 4. DÁTUMVÁLASZTÓ KÁRTYA
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20.0),
               child: Card(
                 color: Colors.blueGrey.shade800,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 child: ListTile(
                   leading: const Icon(Icons.calendar_today, color: Colors.blueAccent),
                   title: Text(
-                    getDay(),
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                    DateFormat('EEEE, MMMM d', 'hu_HU').format(valasztottDatum),
+                    style: const TextStyle(color: Colors.white),
                   ),
-                  trailing: const Icon(Icons.edit, color: Colors.white54, size: 20),
-                  onTap: () => _selectDate(context),
                 ),
               ),
             ),
-
             const Spacer(),
           ],
         ),
@@ -214,13 +178,8 @@ class _EditPageState extends State<EditPage> {
   Widget _buildPicker(FixedExtentScrollController controller, int count, ValueChanged<int> onChanged, {bool isMinute = false}) {
     return Flexible(
       child: CupertinoPicker(
-        squeeze: 0.9,
-        diameterRatio: 1.5,
-        useMagnifier: true,
-        looping: true,
         itemExtent: 80,
         scrollController: controller,
-        selectionOverlay: const CupertinoPickerDefaultSelectionOverlay(background: Colors.transparent),
         onSelectedItemChanged: onChanged,
         children: List.generate(count, (i) => Center(
           child: Text(
