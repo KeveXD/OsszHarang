@@ -61,6 +61,7 @@ flutter:
     - assets/harang.mp3
     - assets/hatter.jpg
     - assets/harangozas2.mp3
+    - assets/harangozas.jpg
 
 
   uses-material-design: true

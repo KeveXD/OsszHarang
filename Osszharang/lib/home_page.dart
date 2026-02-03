@@ -28,8 +28,6 @@ class _HomePageState extends State<HomePage> {
   static StreamSubscription<AlarmSettings>? subscription;
   bool isDescriptionVisible = false;
 
-  // A 'accentColor' változót töröltük, mert most már az AppTheme.accentRed-et használjuk.
-
   @override
   void initState() {
     super.initState();
@@ -62,8 +60,6 @@ class _HomePageState extends State<HomePage> {
       debugPrint('Hiba a weboldal megnyitásakor: $e');
     }
   }
-
-
 
   Future<void> navigateToRingScreen(AlarmSettings alarmSettings) async {
     await Navigator.push(
@@ -130,8 +126,11 @@ class _HomePageState extends State<HomePage> {
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          // Használjuk a közös üveg dekorációt a témából
-                          decoration: AppTheme.glassDecoration(opacity: 0.4),
+                          // MÓDOSÍTÁS: Sötétzöld keret hozzáadva
+                          decoration: AppTheme.glassDecoration(
+                              opacity: 0.4,
+                              borderColor: AppTheme.borderDarkGreen
+                          ),
                           child: Row(
                             children: [
                               Icon(Icons.public, color: AppTheme.accentRed, size: 16),
@@ -178,8 +177,8 @@ class _HomePageState extends State<HomePage> {
 
                 // --- ÓRA (GLOWING RED) ---
                 Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15), // Kicsit szélesebb margó
-                  padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 15), // Nagyobb belső tér
+                  margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 15),
 
                   // Itt hívjuk meg az új, sötétvörös stílust a theme.dart-ból
                   decoration: AppTheme.glowingRedDecoration(),
@@ -254,8 +253,11 @@ class _HomePageState extends State<HomePage> {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
       padding: const EdgeInsets.all(25),
-      // Üveg dekoráció, kicsit sötétebb (0.7), hogy a szöveg olvasható legyen
-      decoration: AppTheme.glassDecoration(opacity: 0.7),
+      // MÓDOSÍTÁS: Sötétzöld keret hozzáadva
+      decoration: AppTheme.glassDecoration(
+          opacity: 0.7,
+          borderColor: AppTheme.borderDarkGreen
+      ),
       child: Scrollbar(
         thumbVisibility: true,
         child: SingleChildScrollView(
@@ -263,7 +265,6 @@ class _HomePageState extends State<HomePage> {
             children: [
               Icon(Icons.history_edu, color: AppTheme.accentRed, size: 36),
               const SizedBox(height: 20),
-              // Itt használjuk a Strings fájlt!
               Text(
                 AppStrings.trianonDescription,
                 textAlign: TextAlign.justify,
@@ -283,68 +284,46 @@ class _HomePageState extends State<HomePage> {
     // Kártya helyett Container-t használunk, hogy rátehessük a saját üveg-dekorációnkat
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
-      decoration: AppTheme.glassDecoration(opacity: 0.5),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(time, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: 2)),
-                      Text(date, style: const TextStyle(color: AppTheme.accentRed, fontSize: 16, fontWeight: FontWeight.w500)),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white24)
-                        ),
-                        child: const Text("EMLÉKHARANGOZÁS", style: TextStyle(color: AppTheme.textPrimary, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
+      // MÓDOSÍTÁS: Sötétzöld keret hozzáadva
+      decoration: AppTheme.glassDecoration(
+          opacity: 0.5,
+          borderColor: AppTheme.borderDarkGreen
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(time, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w800, color: AppTheme.textPrimary, letterSpacing: 2)),
+                  Text(date, style: const TextStyle(color: AppTheme.accentRed, fontSize: 16, fontWeight: FontWeight.w500)),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white24)
+                    ),
+                    child: const Text("EMLÉKHARANGOZÁS", style: TextStyle(color: AppTheme.textPrimary, fontSize: 11, letterSpacing: 1.5, fontWeight: FontWeight.bold)),
                   ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(15),
-                      boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15, spreadRadius: 2)]
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(15),
-                    child: Image.asset('assets/harang.jpg', width: 85, height: 85, fit: BoxFit.cover),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 0,
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), topRight: Radius.circular(20)),
-                onTap: () async {
-                  await Alarm.stop(alarm.id);
-                  harangokBetoltese();
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
-                      borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), topRight: Radius.circular(20))
-                  ),
-                  child: const Icon(Icons.close, color: AppTheme.textPrimary, size: 20),
-                ),
+                ],
               ),
             ),
-          ),
-        ],
+            Container(
+              decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 15, spreadRadius: 2)]
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: Image.asset('assets/harang.jpg', width: 85, height: 85, fit: BoxFit.cover),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

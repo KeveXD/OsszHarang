@@ -22,18 +22,19 @@ class _HarangozasPageState extends State<HarangozasPage> {
       backgroundColor: AppTheme.backgroundBase, // Sötétzöld alap
       body: Stack(
         children: [
-          // 1. HÁTTÉRKÉP (Ugyanaz, mint a többi oldalon, vagy a harangborito)
+          // 1. HÁTTÉRKÉP
           Positioned.fill(
             child: Image.asset(
-              'assets/harangborito.jpg', // Itt megtartottam a specifikus képet
+              'assets/harangozas.jpg',
               fit: BoxFit.cover,
             ),
           ),
 
-          // 2. HOMÁLYOSÍTÁS ÉS SZÍN FÓLIA (Téma szerint)
+          // 2. HOMÁLYOSÍTÁS ÉS SZÍN FÓLIA
           Positioned.fill(
             child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+              // Egy pici homályosítást (3.0) visszatettem, hogy az elegáns vékony betűk olvashatóak legyenek
+              filter: ImageFilter.blur(sigmaX: 3.0, sigmaY: 3.0),
               child: Container(
                 color: AppTheme.backgroundOverlay.withOpacity(0.5), // Zöldes réteg
               ),
@@ -43,67 +44,80 @@ class _HarangozasPageState extends State<HarangozasPage> {
           // 3. TARTALOM
           SafeArea(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                // CÍM
+                // FELSŐ CÍM - Feljebb hozva
+                const SizedBox(height: 40), // Távolság a tetejétől
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: Text(
-                    widget.alarmSettings.notificationTitle ?? "Emlékharangozás",
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppTheme.textPrimary,
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      shadows: [Shadow(blurRadius: 10, color: Colors.black)],
-                    ),
+                  child: Column(
+                    children: [
+                      Text(
+                        (widget.alarmSettings.notificationTitle ?? "EMLÉKHARANGOZÁS").toUpperCase(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 22, // Kicsit kisebb, de...
+                          fontWeight: FontWeight.w300, // ...vékonyabb és...
+                          letterSpacing: 4.0, // ...ritkítottabb (elegánsabb)
+                          shadows: [Shadow(blurRadius: 10, color: Colors.black)],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      // Díszítő vonal a cím alatt
+                      Container(
+                        width: 60,
+                        height: 1,
+                        color: AppTheme.accentRed.withOpacity(0.8),
+                      )
+                    ],
                   ),
                 ),
 
-                // ANIMÁCIÓ (Izzó piros körben)
+                const Spacer(), // Ez tolja középre a harangot
+
+                // ANIMÁCIÓ (Középen)
                 SwingAnimation(
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: AppTheme.glowingRedDecoration(), // A téma izzó effektje!
-                    child: Center(
-                      child: Text(
-                        "🔔",
-                        style: TextStyle(fontSize: 80),
+                  child: Center(
+                    child: Text(
+                      "🔔",
+                      style: TextStyle(
+                          fontSize: 100,
+                          shadows: [
+                            Shadow(
+                                blurRadius: 40,
+                                color: AppTheme.accentRed.withOpacity(0.5),
+                                offset: const Offset(0, 0)
+                            )
+                          ]
                       ),
                     ),
                   ),
                 ),
 
-                // LEÁLLÍTÁS GOMB
+                const Spacer(), // Ez tolja le a gombot
+
+                // LEÁLLÍTÁS GOMB - Szerényebb, keretes (Outlined) stílus
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40.0),
-                  child: Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        boxShadow: [
-                          BoxShadow(
-                              color: AppTheme.accentRed.withOpacity(0.4),
-                              blurRadius: 20,
-                              spreadRadius: 2
-                          )
-                        ]
+                  padding: const EdgeInsets.only(bottom: 50.0, left: 40, right: 40),
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      _showExitConfirmationDialog(context);
+                    },
+                    icon: const Icon(Icons.stop_circle_outlined, color: AppTheme.textPrimary),
+                    label: const Text(
+                      "HARANGOZÁS LEÁLLÍTÁSA",
+                      style: TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 1.5
+                      ),
                     ),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _showExitConfirmationDialog(context);
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.accentRed, // Sötétvörös
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 20),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                      ),
-                      child: const Text(
-                        "HARANGOZÁS LEÁLLÍTÁSA",
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
-                      ),
+                    style: OutlinedButton.styleFrom(
+                      // Átlátszó háttér, vékony piros keret
+                      side: const BorderSide(color: AppTheme.accentRed, width: 1.0),
+                      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 20),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                      backgroundColor: Colors.black.withOpacity(0.2), // Nagyon halvány sötét háttér a gombnak
                     ),
                   ),
                 ),
@@ -120,14 +134,13 @@ class _HarangozasPageState extends State<HarangozasPage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        // Üveghatású dialógus
         return BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
           child: AlertDialog(
-            backgroundColor: AppTheme.backgroundBase.withOpacity(0.9), // Sötétzöld háttér
+            backgroundColor: AppTheme.backgroundBase.withOpacity(0.9),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              side: const BorderSide(color: AppTheme.accentRed, width: 1), // Piros keret
+              side: const BorderSide(color: AppTheme.accentRed, width: 1),
             ),
             title: const Text(
                 "Leállítás",
@@ -139,14 +152,13 @@ class _HarangozasPageState extends State<HarangozasPage> {
             ),
             actions: <Widget>[
               TextButton(
-                onPressed: () => Navigator.pop(context), // Mégsem
+                onPressed: () => Navigator.pop(context),
                 child: const Text("MÉGSEM", style: TextStyle(color: AppTheme.textTertiary)),
               ),
               ElevatedButton(
                 onPressed: () {
-                  // Leállítás és kilépés
-                  Alarm.stop(widget.alarmSettings.id).then((_) => Navigator.pop(context)); // Bezár dialog
-                  Navigator.pop(context); // Bezár oldal
+                  Alarm.stop(widget.alarmSettings.id).then((_) => Navigator.pop(context));
+                  Navigator.pop(context);
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentRed),
                 child: const Text("IGEN, LEÁLLÍTÁS", style: TextStyle(color: Colors.white)),
@@ -159,12 +171,10 @@ class _HarangozasPageState extends State<HarangozasPage> {
   }
 }
 
-// Az animáció változatlan maradt, csak a hívása változott fent
+// Animáció (változatlan)
 class SwingAnimation extends StatefulWidget {
   final Widget child;
-
   const SwingAnimation({Key? key, required this.child}) : super(key: key);
-
   @override
   _SwingAnimationState createState() => _SwingAnimationState();
 }

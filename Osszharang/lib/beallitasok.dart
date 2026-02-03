@@ -179,7 +179,11 @@ class _BeallitasokPageState extends State<BeallitasokPage> {
                     children: [
                       _buildSectionTitle("MEGBÍZHATÓ MŰKÖDÉS (FONTOS!)"),
                       Container(
-                        decoration: AppTheme.glassDecoration(opacity: 0.5),
+                        // MÓDOSÍTÁS: Hozzáadva a sötétzöld keret (borderColor)
+                        decoration: AppTheme.glassDecoration(
+                            opacity: 0.5,
+                            borderColor: AppTheme.borderDarkGreen
+                        ),
                         child: Column(
                           children: [
                             Padding(
@@ -232,7 +236,11 @@ class _BeallitasokPageState extends State<BeallitasokPage> {
 
                       _buildSectionTitle("HANG ÉS REZGÉS"),
                       Container(
-                        decoration: AppTheme.glassDecoration(opacity: 0.5),
+                        // MÓDOSÍTÁS: Hozzáadva a sötétzöld keret (borderColor)
+                        decoration: AppTheme.glassDecoration(
+                            opacity: 0.5,
+                            borderColor: AppTheme.borderDarkGreen
+                        ),
                         child: Column(
                           children: [
                             _buildSwitchTile(
@@ -293,7 +301,11 @@ class _BeallitasokPageState extends State<BeallitasokPage> {
 
                       _buildSectionTitle("AUTOMATIKUS HARANGOZÁSOK"),
                       Container(
-                        decoration: AppTheme.glassDecoration(opacity: 0.5),
+                        // MÓDOSÍTÁS: Hozzáadva a sötétzöld keret (borderColor)
+                        decoration: AppTheme.glassDecoration(
+                            opacity: 0.5,
+                            borderColor: AppTheme.borderDarkGreen
+                        ),
                         child: Column(
                           children: [
                             _buildSwitchTile(

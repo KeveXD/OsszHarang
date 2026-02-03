@@ -1,47 +1,52 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // --- SZÍNPALETTA (Zöld árnyalatok + Egy Piros) ---
+  // --- SZÍNEK (Visszafogott / Subtle Green Edition) ---
 
-  // 1. Alap Háttér (A legsötétebb méregzöld - fekete helyett)
-  static const Color backgroundBase = Color(0xFF02231C);
+  // 1. Háttér Alap (Majdnem fekete, egy nagyon pici sötétzöld tónussal)
+  static const Color backgroundBase = Color(0xFF101A16);
 
-  // 2. Fólia (Zsálya zöld - ez világosít a háttérképen)
-  static const Color backgroundOverlay = Color(0xFF388E3C);
+  // 2. Fólia (Tompa Zsálya / Szürkés-zöld)
+  static const Color backgroundOverlay = Color(0xFF4A635D);
 
-  // 3. Üveg "Sötétség" (Sötét fenyőzöld - a dobozok háttere fekete helyett)
-  static const Color glassBackground = Color(0xFF001510);
+  // 3. Kiemelő Szín (Pasztell Korall)
+  static const Color accentRed = Color(0xBFFA0707);
 
-  // 4. Kiemelő Piros (Telített, nemzeti piros)
-  static const Color accentRed = Color(0xFFD32F2F);
+  // 4. Segédszín (Törtfehér)
+  static const Color textCream = Color(0xFFF2F5F4);
 
-  // --- SZÖVEG SZÍNEK ---
-  static const Color textPrimary = Colors.white;       // Hófehér
-  static const Color textSecondary = Color(0xFFA5D6A7); // Halványzöld (fehér helyett, ahol kevésbé fontos)
-  static const Color textTertiary = Color(0xFF66BB6A);  // Középzöld
+  // 5. ÚJ: Sötétzöld Keret Szín (Elegáns fenyőzöld)
+  static const Color borderDarkGreen = Color(0xFF1E3128);
 
-  // --- STÍLUSOK ---
+  // --- ÜVEG ALAPOK ---
 
-  // Általános üveg doboz (Lista elemek, gombok háttere)
+  static const Color glassBackground = Color(0xFF002012);
+
+  // Szöveg színek
+  static const Color textPrimary = Colors.white;
+  static const Color textSecondary = Color(0xFFCFD8DC);
+  static const Color textTertiary = Colors.white54;
+
+  // --- STÍLUSOK (DEKORÁCIÓK) ---
+
+  // Általános üveg doboz (Fehér/Áttetsző kerettel - ez a régi)
+  // Általános üveg doboz
   static BoxDecoration glassDecoration({
-    Color borderColor = Colors.white12, // Nagyon halvány keret
-    double opacity = 0.6, // Kicsit erősebb fedés, hogy a zöld látszódjon
+    Color borderColor = Colors.white10,
+    double opacity = 0.5,
+    double borderWidth = 5.0, // <--- ITT: Ez az alapértelmezett vastagság (pl. 2.0)
   }) {
     return BoxDecoration(
-      // Fekete helyett a sötét fenyőzöldet használjuk
       color: glassBackground.withOpacity(opacity),
-      borderRadius: BorderRadius.circular(20),
-
+      borderRadius: BorderRadius.circular(25),
       border: Border.all(
           color: borderColor,
-          width: 1
+          width: borderWidth // <--- Itt használjuk fel a fenti értéket
       ),
-
       boxShadow: [
         BoxShadow(
-          // Fekete árnyék helyett mélyzöld árnyék!
-          color: const Color(0xFF000F05).withOpacity(0.5),
-          blurRadius: 15,
+          color: Colors.black.withOpacity(0.3),
+          blurRadius: 20,
           spreadRadius: 1,
           offset: const Offset(0, 4),
         )
@@ -49,31 +54,46 @@ class AppTheme {
     );
   }
 
-  // Az Óra "Extrás" doboza
+  // ÚJ: Zöld Keretes Üveg Doboz (Ha ezt a keretszínt akarod használni a kártyákon)
+  static BoxDecoration greenGlassDecoration({
+    double opacity = 0.5,
+  }) {
+    return BoxDecoration(
+      color: glassBackground.withOpacity(opacity),
+      borderRadius: BorderRadius.circular(25),
+      // Itt használjuk az új sötétzöld keretet
+      border: Border.all(color: borderDarkGreen, width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.3),
+          blurRadius: 20,
+          spreadRadius: 1,
+          offset: const Offset(0, 4),
+        )
+      ],
+    );
+  }
+
+  // Az "Extrás" Óra stílusa (Pasztell piros keret + Ragyogás)
   static BoxDecoration glowingRedDecoration() {
     return BoxDecoration(
-      // A belseje sötét fenyőzöld (nem fekete)
-      color: glassBackground.withOpacity(0.7),
+      color: Colors.black.withOpacity(0.6),
 
       borderRadius: BorderRadius.circular(35),
 
-      // Piros keret
       border: Border.all(
-        color: accentRed.withOpacity(0.8),
-        width: 2.0,
+        color: Colors.white.withOpacity(0.7),
+        width: 1.5,
       ),
 
-      // Piros + Mélyzöld ragyogás
       boxShadow: [
-        // Külső piros fény
         BoxShadow(
-          color: accentRed.withOpacity(0.2),
+          color: Colors.white.withOpacity(0.15),
           blurRadius: 30,
-          spreadRadius: 2,
+          spreadRadius: 1,
         ),
-        // Belső mélység (sötétzöld árnyék)
         BoxShadow(
-          color: const Color(0xFF000F05).withOpacity(0.6),
+          color: glassBackground.withOpacity(0.2),
           blurRadius: 15,
           offset: const Offset(0, 8),
         ),
